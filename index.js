@@ -5,28 +5,24 @@ const axios = require('axios');
 const telegramToken = '8602651456:AAHBB8g0lvXPEZjcUN4afQxkTGhzRDUc8UE';
 const GROQ_KEY = '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';
 
-// Seus cookies atualizados (Simulando login via WWW)
-const COOKIES = 'pac_ocean=3E830B6C; HighwindFRPG=K2Frkr5rtP9NUJqkQJS3lw%3D%3D%3Cstrip%3E%24argon2id%24v%3D19%24m%3D7168%2Ct%3D4%2Cp%3D1%24WmhsbEc3Y3hXTk05NUJtMw%24Si%2FlxsAxAZF6elMB50x8GXJSQKWd12ZpZ8oUstU2Vd8; farmrpg_token=iu9485rc4fjepnk1g4bsgu319n1p0lbtqtcror2c; last_tab_profile=tab1;';
+// COOKIES ATUALIZADOS (28/03/2026)
+const COOKIES = 'pac_ocean=4829DE6B; HighwindFRPG=K2Frkr5rtP9NUJqkQJS3lw%3D%3D%3Cstrip%3E%24argon2id%24v%3D19%24m%3D7168%2Ct%3D4%2Cp%3D1%24WmhsbEc3Y3hXTk05NUJtMw%24Si%2FlxsAxAZF6elMB50x8GXJSQKWd12ZpZ8oUstU2Vd8; farmrpg_token=h1jh6v8vd0qdvnfp4k6qco7dpgvp6un0dk92cb14; last_tab_profile=tab1;';
 
 const bot = new TelegramBot(telegramToken, { polling: true });
 
-// --- HEADERS QUE SIMULAM NAVEGADOR REAL (WWW MODE) ---
 const webHeaders = {
     'Host': 'farmrpg.com',
-    'Connection': 'keep-alive',
-    'Pragma': 'no-cache',
-    'Cache-Control': 'no-cache',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Accept': '*/*',
-    'Origin': 'https://farmrpg.com',
-    'Sec-Fetch-Site': 'same-origin',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Dest': 'empty',
-    'Referer': 'https://farmrpg.com/index.php',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
     'Cookie': COOKIES,
-    'X-Requested-With': 'XMLHttpRequest',
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    'Referer': 'https://farmrpg.com/index.php',
+    'X-Requested-With': 'XMLHttpRequest'
 };
 
 // --- CÉREBRO LLAMA 3 ---
@@ -35,8 +31,8 @@ async function inteligenciaLlama(prata, stamina) {
         const res = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama3-8b-8192",
             messages: [
-                { role: "system", content: "Você é um bot estrategista de Farm RPG. Responda APENAS com uma dessas palavras: COLHER, PLANTAR ou PESCAR." },
-                { role: "user", content: `Status: ${prata} prata, ${stamina} stamina. O que fazer?` }
+                { role: "system", content: "Você é o mestre do Farm RPG. Responda apenas UMA palavra: COLHER, PLANTAR ou PESCAR." },
+                { role: "user", content: `Status: ${prata} prata, ${stamina} stamina. O que fazer agora?` }
             ],
             temperature: 0.3
         }, {
@@ -50,52 +46,62 @@ async function inteligenciaLlama(prata, stamina) {
 
 async function realizarAcao(go, nome) {
     try {
-        // Simulando o tempo de clique humano (1.5 a 3 segundos)
-        await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+        // Delay aleatório para parecer humano (2 a 4 segundos)
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
         
-        const r = await axios.post(`https://farmrpg.com/worker.php?go=${go}`, {}, { headers: webHeaders });
-        console.log(`[WWW-BOT] ${nome} executado.`);
+        const r = await axios.post(`https://farmrpg.com/worker.php?go=${go}`, {}, { 
+            headers: { ...webHeaders, 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' } 
+        });
+        console.log(`[ACAO] ${nome} executado.`);
         return r.data;
     } catch (error) {
-        console.log(`Erro técnico em: ${nome}`);
+        console.log(`Erro em: ${nome}`);
     }
 }
 
-async function iniciarFarmWWW(chatId) {
-    bot.sendMessage(chatId, "🌐 *MODO NAVEGADOR WWW ATIVADO*\nSimulando acesso real via Chrome/Windows.");
+async function iniciarFarmReal(chatId) {
+    bot.sendMessage(chatId, "🚀 *MODO NAVEGADOR COMPATÍVEL ATIVADO*\nConectando à sua conta real...");
 
     while (true) {
         try {
-            // Verifica se ainda está logado
-            const check = await axios.get('https://farmrpg.com/index.php', { headers: webHeaders });
-            if (!check.data.includes('username')) {
-                bot.sendMessage(chatId, "⚠️ Sessão expirada! Atualize os cookies no GitHub.");
+            // BUSCA STATUS REAL DA CONTA
+            const response = await axios.get('https://farmrpg.com/index.php', { headers: webHeaders });
+            const html = response.data;
+
+            if (!html.includes('username')) {
+                bot.sendMessage(chatId, "❌ *Erro de Login:* O token expirou ou é inválido.");
                 break;
             }
 
-            const prata = check.data.match(/class='silver'>(.*?)<\/span>/)?.[1] || '0';
-            const stamina = check.data.match(/id='staminatxt'>(.*?)<\/span>/)?.[1] || '0';
+            // Captura Prata e Stamina direto do site
+            const prata = html.match(/class='silver'>(.*?)<\/span>/)?.[1] || "Desconhecido";
+            const stamina = html.match(/id='staminatxt'>(.*?)<\/span>/)?.[1] || "0";
 
             const decisao = await inteligenciaLlama(prata, stamina);
-            bot.sendMessage(chatId, `🤖 *IA Decidiu:* ${decisao}\n💰 Prata: ${prata} | ⚡ Stamina: ${stamina}`);
+            bot.sendMessage(chatId, `📊 *STATUS REAL:*\n💰 Prata: ${prata}\n⚡ Stamina: ${stamina}\n\n🤖 *IA Decidiu:* ${decisao}`);
 
+            // Execução baseada na decisão
             if (decisao.includes("COLHER")) await realizarAcao('harvestall', 'Colheita');
             if (decisao.includes("PLANTAR")) await realizarAcao('plantall&id=8', 'Plantio');
             if (decisao.includes("PESCAR")) {
-                if (parseInt(stamina) > 5) {
+                if (parseInt(stamina) > 10) {
                     await realizarAcao('fish&id=1', 'Pescaria');
-                    await realizarAcao('sellallfish', 'Venda');
+                    await realizarAcao('sellallfish', 'Venda de Peixes');
                 }
             }
             await realizarAcao('collectallpets', 'Pets');
 
         } catch (e) {
-            console.log("Falha no ciclo.");
+            console.log("Erro no ciclo: " + e.message);
         }
-        // Espera 2 minutos entre ciclos (Padrão seguro para WWW)
-        await new Promise(r => setTimeout(r, 120000));
+        
+        // Espera 3 minutos entre os ciclos para segurança total
+        await new Promise(r => setTimeout(r, 180000));
     }
 }
 
-bot.onText(/\/start/, (msg) => iniciarFarmWWW(msg.chat.id));
-console.log("V27 WWW-Mode Online.");
+bot.onText(/\/start/, (msg) => iniciarFarmReal(msg.chat.id));
+console.log("V28 Real-Mode Online.");
+
+// Tratamento de erros para não derrubar o container do Railway
+process.on('uncaughtException', (err) => console.error('Erro:', err));
