@@ -1,11 +1,12 @@
 const axios = require('axios');
+const http = require('http');
 
-// --- SEUS DADOS ATUALIZADOS (MUNDO BR10) ---
+// --- SEUS DADOS (ATUALIZE O SID SEMPRE QUE EXPIRAR) ---
 const CONFIG = {
     MUNDO: 'br10',
-    SID: 'yKhDnHUrQsXKT4lZzSuGec4PrfWpKBf4dFHe_w6M', // Seu SID atual
-    INSTANCE_ID: 'kijquk0j6e',                       // Seu ID de instância
-    H: '' // <--- SE O BOT DER ERRO, O LOG VAI TENTAR TE DAR ESSE CÓDIGO
+    SID: 'yKhDnHUrQsXKT4lZzSuGec4PrfWpKBf4dFHe_w6M', 
+    INSTANCE_ID: 'kijquk0j6e',
+    H: '' // Deixe vazio se não tiver, o bot tentará rodar sem ele
 };
 
 const headers = {
@@ -16,11 +17,16 @@ const headers = {
     'Referer': `https://${CONFIG.MUNDO}.forgeofempires.com/game/index`
 };
 
+// MANTÉM O RAILWAY FELIZ (EVITA O ERRO SIGTERM)
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot Forge of Empires Online!\n');
+});
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => console.log(`🚀 Servidor de monitoramento na porta ${PORT}`));
+
 async function enviarComando(servico, metodo, dados = []) {
-    // Usamos um 'h' qualquer para forçar o servidor a responder com erro e nos mostrar o real
-    const hAtual = CONFIG.H || '1234567890'; 
-    const url = `https://${CONFIG.MUNDO}.forgeofempires.com/game/json?h=${hAtual}`;
-    
+    const url = `https://${CONFIG.MUNDO}.forgeofempires.com/game/json?h=${CONFIG.H}`;
     const payload = [{
         __class__: "ServerRequest",
         requestClass: servico,
@@ -31,50 +37,45 @@ async function enviarComando(servico, metodo, dados = []) {
 
     try {
         const res = await axios.post(url, payload, { headers });
-        
-        // LOG DE SEGURANÇA: Se o servidor rejeitar, ele costuma mandar o motivo no JSON
-        if (res.data && res.data.found_h) {
-            console.log(`🎯 ACHEI O H! O seu código é: ${res.data.found_h}`);
-        }
-
         return res.data;
     } catch (e) {
-        console.log("⚠️ Erro de conexão ou H inválido. Verifique o SID.");
         return null;
     }
 }
 
 async function iniciarBot() {
-    console.log("-----------------------------------------");
-    console.log(`🤖 INICIANDO BOT NO MUNDO ${CONFIG.MUNDO.toUpperCase()}`);
-    console.log("-----------------------------------------");
+    console.log(`\n📅 Execução: ${new Date().toLocaleString()}`);
+    
+    try {
+        const resposta = await enviarComando("OtherPlayerService", "getNeighborList");
 
-    const resposta = await enviarComando("OtherPlayerService", "getNeighborList");
-
-    if (!resposta || !resposta[0] || !resposta[0].responseData) {
-        console.log("❌ ERRO: Não foi possível ler os vizinhos.");
-        console.log("👉 DICA: Olhe as linhas acima no log para ver se o 'H' apareceu.");
-        console.log("👉 Se o SID expirou, pegue um novo no navegador e atualize o script.");
-        return;
-    }
-
-    const vizinhos = resposta[0].responseData;
-    console.log(`👥 Sucesso! ${vizinhos.length} vizinhos encontrados.`);
-
-    let ajudados = 0;
-    for (const p of vizinhos) {
-        if (!p.is_self && p.next_interaction_in === 0) {
-            console.log(`✨ Ajudando: ${p.name}...`);
-            await enviarComando("OtherPlayerService", "politeAndMotivate", [p.player_id]);
-            ajudados++;
-            
-            // Delay para evitar banimento (entre 2 e 5 segundos)
-            await new Promise(r => setTimeout(r, Math.random() * 3000 + 2000));
+        if (!resposta || !resposta[0] || !resposta[0].responseData) {
+            console.log("❌ ERRO: O SID expirou ou o servidor bloqueou a conexão.");
+            console.log("👉 Pegue um novo SID no navegador e atualize o GitHub.");
+            return;
         }
-    }
 
-    console.log(`🏁 FIM DO CICLO. Total de ajudas: ${ajudados}`);
+        const vizinhos = resposta[0].responseData;
+        console.log(`👥 Vizinhos encontrados: ${vizinhos.length}`);
+
+        let contador = 0;
+        for (const p of vizinhos) {
+            if (!p.is_self && p.next_interaction_in === 0) {
+                console.log(`✨ Motivando: ${p.name}...`);
+                await enviarComando("OtherPlayerService", "politeAndMotivate", [p.player_id]);
+                contador++;
+                
+                // Delay de 3 segundos para segurança
+                await new Promise(r => setTimeout(r, 3000));
+            }
+        }
+        console.log(`🏁 Ciclo finalizado. Ajudados: ${contador}`);
+
+    } catch (error) {
+        console.log("⚠️ Ocorreu um erro, mas o bot continua online.");
+    }
 }
 
+// Inicia a primeira vez e repete a cada 6 horas
 iniciarBot();
-setInterval(iniciarBot, 86400000); // Roda a cada 24 horas
+setInterval(iniciarBot, 21600000); 
