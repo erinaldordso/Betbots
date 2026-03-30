@@ -1,72 +1,85 @@
 const axios = require('axios');
 
-// CONFIGURAÇÃO DOS SEUS COOKIES (O QUE VOCÊ PEGOU NO NAVEGADOR)
-const SID = 'W7bWbyw_cq3lzzv4N-l0J4j2dUDOs8lBCD0nXT6Y';
-const INSTANCE_ID = 'ievw22oi9';
-const MUNDO = 'br10'; // Seu mundo no Forge
-
-const headers = {
-    'Cookie': `sid=${SID}; instanceId=${INSTANCE_ID};`,
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    'Content-Type': 'application/json'
+// --- SEUS DADOS ATUALIZADOS (BR10) ---
+const CONFIG = {
+    MUNDO: 'br10',
+    SID: 'yKhDnHUrQsXKT4lZzSuGec4PrfWpKBf4dFHe_w6M',
+    INSTANCE_ID: 'kijquk0j6e',
+    // O 'h' é a chave dinâmica. Se o bot der erro de "h obrigatório", 
+    // você precisará pegar esse código na aba Network do navegador.
+    H: '' 
 };
 
-// FUNÇÃO PARA ENVIAR COMANDOS AO SERVIDOR
+const headers = {
+    'Cookie': `sid=${CONFIG.SID}; instanceId=${CONFIG.INSTANCE_ID};`,
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Content-Type': 'application/json',
+    'Origin': `https://${CONFIG.MUNDO}.forgeofempires.com`,
+    'Referer': `https://${CONFIG.MUNDO}.forgeofempires.com/game/index`
+};
+
+// FUNÇÃO PARA ENVIAR REQUISIÇÕES AO SERVIDOR
 async function enviarComando(servico, metodo, dados = []) {
-    // Nota: Como não temos o 'h', tentamos enviar vazio. 
-    // Se o servidor negar, ele retornará o erro com o 'h' necessário no corpo da resposta.
-    const url = `https://${MUNDO}.forgeofempires.com/game/json?h=`;
+    const url = `https://${CONFIG.MUNDO}.forgeofempires.com/game/json?h=${CONFIG.H}`;
     
     const payload = [{
         __class__: "ServerRequest",
         requestClass: servico,
         requestMethod: metodo,
         requestData: dados,
-        requestId: Math.floor(Math.random() * 1000)
+        requestId: Math.floor(Math.random() * 10000)
     }];
 
     try {
         const res = await axios.post(url, payload, { headers });
         return res.data;
     } catch (e) {
-        console.error("❌ Erro na requisição:", e.message);
+        console.error(`❌ Erro ao chamar ${metodo}:`, e.message);
         return null;
     }
 }
 
-// LÓGICA PRINCIPAL: AUTO-AJUDA (MOTIVAR/POLIR VIZINHOS)
-async function rodarBot() {
-    console.log("🤖 Iniciando ciclo de ajuda automática...");
+// LÓGICA PRINCIPAL DO BOT
+async function iniciarBot() {
+    console.log("-----------------------------------------");
+    console.log("🤖 FOE BOT BR10 - INICIANDO CICLO");
+    console.log("-----------------------------------------");
 
-    // 1. Pega a lista de vizinhos
-    const vizinhos = await enviarComando("OtherPlayerService", "getNeighborList");
+    // 1. TENTA PEGAR A LISTA DE VIZINHOS
+    const resposta = await enviarComando("OtherPlayerService", "getNeighborList");
 
-    if (!vizinhos || !vizinhos[0] || !vizinhos[0].responseData) {
-        console.log("⚠️ Não foi possível ler a lista. Verifique se o SID ainda é válido.");
+    if (!resposta || !resposta[0] || !resposta[0].responseData) {
+        console.log("⚠️ ERRO: Não foi possível ler os vizinhos.");
+        console.log("👉 Motivo provável: O SID expirou ou o código 'h' é obrigatório.");
         return;
     }
 
-    const players = vizinhos[0].responseData;
-    console.log(`👥 Encontrados ${players.length} vizinhos.`);
+    const vizinhos = resposta[0].responseData;
+    console.log(`👥 Sucesso! Encontrados ${vizinhos.length} vizinhos.`);
 
-    for (let player of players) {
-        // Só ajuda se não for você mesmo e se o botão de ajuda estiver disponível (next_interaction_in === 0)
-        if (!player.is_self && player.next_interaction_in === 0) {
-            console.log(`✨ Ajudando jogador: ${player.name}...`);
+    // 2. FILTRA QUEM PODE SER AJUDADO (next_interaction_in === 0)
+    let ajudados = 0;
+    for (const p of vizinhos) {
+        if (!p.is_self && p.next_interaction_in === 0) {
+            console.log(`✨ Ajudando: ${p.name} (ID: ${p.player_id})...`);
             
-            await enviarComando("OtherPlayerService", "politeAndMotivate", [player.player_id]);
-            
-            // ESPERA de 3 a 5 segundos entre cada ajuda (MUITO IMPORTANTE PARA NÃO SER BANIDO)
-            const delay = Math.floor(Math.random() * 2000) + 3000;
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await enviarComando("OtherPlayerService", "politeAndMotivate", [p.player_id]);
+            ajudados++;
+
+            // DELAY DE SEGURANÇA (3 a 6 segundos) para não ser banido
+            const delay = Math.floor(Math.random() * 3000) + 3000;
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 
-    console.log("🏁 Ciclo concluído! Próxima verificação em 24 horas.");
+    console.log("-----------------------------------------");
+    console.log(`🏁 CICLO FINALIZADO. Ajudados hoje: ${ajudados}`);
+    console.log("💤 O Bot entrará em espera por 24 horas.");
+    console.log("-----------------------------------------");
 }
 
-// Executa o bot imediatamente ao ligar o Railway
-rodarBot();
+// EXECUTA O BOT
+iniciarBot();
 
-// Agenda para rodar a cada 24 horas (86400000 ms)
-setInterval(rodarBot, 86400000);
+// REPETE A CADA 24 HORAS
+setInterval(iniciarBot, 86400000);
