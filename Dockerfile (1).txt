@@ -1,0 +1,16 @@
+FROM ollama/ollama
+
+# Define a porta do Hugging Face
+ENV OLLAMA_HOST=0.0.0.0:7860
+# Define onde os modelos serão salvos (Pasta temporária que o HF permite escrever)
+ENV OLLAMA_MODELS=/tmp/.ollama/models
+
+# Cria o diretório e dá permissão
+RUN mkdir -p /tmp/.ollama/models && chmod -R 777 /tmp
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 7860
+
+ENTRYPOINT ["/usr/bin/bash", "/entrypoint.sh"]
